@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: project4-app
+  namespace: project4
+  labels:
+    app: project4-app
+spec:
+  type: ClusterIP
+
+  selector:
+    app: project4-app
+
+  ports:
+    - name: http
+      port: 80
+      targetPort: 5000
+      protocol: TCP

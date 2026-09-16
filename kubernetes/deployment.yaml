@@ -1,0 +1,61 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: project4-app
+  namespace: project4
+  labels:
+    app: project4-app
+
+spec:
+  replicas: 2
+
+  selector:
+    matchLabels:
+      app: project4-app
+
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1
+      maxSurge: 1
+
+  template:
+    metadata:
+      labels:
+        app: project4-app
+
+    spec:
+      containers:
+        - name: project4-app
+          image: 857037249719.dkr.ecr.af-south-1.amazonaws.com/project4-app:1.0.0
+
+          ports:
+            - containerPort: 5000
+              protocol: TCP
+
+          envFrom:
+            - configMapRef:
+                name: project4-config
+
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+
+            limits:
+              cpu: "500m"
+              memory: "256Mi"
+
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 5000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 5000
+            initialDelaySeconds: 15
+            periodSeconds: 20
