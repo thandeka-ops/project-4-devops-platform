@@ -136,3 +136,131 @@ resource "aws_route_table_association" "private" {
   subnet_id      = aws_subnet.private[count.index].id
   route_table_id = aws_route_table.private.id
 }
+resource "aws_iam_role" "eks_cluster" {
+  name = "project4-eks-cluster-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Principal = {
+          Service = "eks.amazonaws.com"
+        }
+        Action = "sts:AssumeRole"
+      }
+    ]
+  })
+
+  tags = {
+    Name        = "project4-eks-cluster-role"
+    Project     = "Project4"
+    Environment = "dev"
+    ManagedBy   = "Terraform"
+  }
+}
+resource "aws_iam_role_policy_attachment" "eks_cluster_policy" {
+  role       = aws_iam_role.eks_cluster.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonEKSClusterPolicy"
+}
+resource "aws_iam_role" "eks_node" {
+  name = "project4-eks-node-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Principal = {
+          Service = "ec2.amazonaws.com"
+        }
+        Action = "sts:AssumeRole"
+      }
+    ]
+  })
+
+  tags = {
+    Name        = "project4-eks-node-role"
+    Project     = "Project4"
+    Environment = "dev"
+    ManagedBy   = "Terraform"
+  }
+}
+resource "aws_iam_role_policy_attachment" "eks_node_worker_policy" {
+  role       = aws_iam_role.eks_node.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy"
+}
+
+resource "aws_iam_role_policy_attachment" "eks_node_ecr_policy" {
+  role       = aws_iam_role.eks_node.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryPullOnly"
+}
+
+resource "aws_iam_role_policy_attachment" "eks_node_cni_policy" {
+  role       = aws_iam_role.eks_node.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy"
+}
+resource "aws_eks_cluster" "project4" {
+  name     = "project4-eks"
+  role_arn = aws_iam_role.eks_cluster.arn
+  version  = "1.36"
+
+  vpc_config {
+    subnet_ids = concat(
+      aws_subnet.public[*].id,
+      aws_subnet.private[*].id
+    )
+
+    endpoint_private_access = true
+    endpoint_public_access  = true
+  }
+
+  tags = {
+    Name        = "project4-eks"
+    Project     = "Project4"
+    Environment = "dev"
+    ManagedBy   = "Terraform"
+  }
+
+  depends_on = [
+    aws_iam_role_policy_attachment.eks_cluster_policy
+  ]
+}
+resource "aws_eks_node_group" "project4" {
+  cluster_name    = aws_eks_cluster.project4.name
+  node_group_name = "project4-node-group"
+  node_role_arn   = aws_iam_role.eks_node.arn
+
+  subnet_ids = [
+    aws_subnet.private[0].id,
+    aws_subnet.private[1].id,
+    aws_subnet.private[2].id
+  ]
+
+  instance_types = ["t3.small"]
+
+  capacity_type = "ON_DEMAND"
+
+  scaling_config {
+    desired_size = 2
+    min_size     = 1
+    max_size     = 3
+  }
+
+  update_config {
+    max_unavailable = 1
+  }
+
+  tags = {
+    Name        = "project4-node-group"
+    Project     = "Project4"
+    Environment = "dev"
+    ManagedBy   = "Terraform"
+  }
+
+  depends_on = [
+    aws_iam_role_policy_attachment.eks_node_worker_policy,
+    aws_iam_role_policy_attachment.eks_node_ecr_policy,
+    aws_iam_role_policy_attachment.eks_node_cni_policy
+  ]
+}
