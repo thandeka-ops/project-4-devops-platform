@@ -36,6 +36,8 @@ spec:
           envFrom:
             - configMapRef:
                 name: project4-config
+            - secretRef:
+                name: project4-secret
 
           resources:
             requests:
