@@ -226,6 +226,20 @@ resource "aws_eks_cluster" "project4" {
     aws_iam_role_policy_attachment.eks_cluster_policy
   ]
 }
+resource "aws_iam_openid_connect_provider" "eks" {
+  url = aws_eks_cluster.project4.identity[0].oidc[0].issuer
+
+  client_id_list = [
+    "sts.amazonaws.com"
+  ]
+
+  tags = {
+    Name        = "project4-eks-oidc"
+    Project     = "Project4"
+    Environment = "dev"
+    ManagedBy   = "Terraform"
+  }
+}
 resource "aws_eks_node_group" "project4" {
   cluster_name    = aws_eks_cluster.project4.name
   node_group_name = "project4-node-group"
