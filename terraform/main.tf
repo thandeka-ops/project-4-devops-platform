@@ -240,6 +240,59 @@ resource "aws_iam_openid_connect_provider" "eks" {
     ManagedBy   = "Terraform"
   }
 }
+resource "aws_iam_policy" "aws_load_balancer_controller" {
+  name        = "AWSLoadBalancerControllerIAMPolicy-Project4"
+  description = "IAM policy for the AWS Load Balancer Controller in Project 4"
+
+  policy = file("${path.module}/aws-load-balancer-controller-policy.json")
+
+  tags = {
+    Name        = "project4-aws-load-balancer-controller-policy"
+    Project     = "Project4"
+    Environment = "dev"
+    ManagedBy   = "Terraform"
+  }
+}
+resource "aws_iam_role" "aws_load_balancer_controller" {
+  name = "project4-aws-load-balancer-controller"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+
+    Statement = [
+      {
+        Effect = "Allow"
+
+        Principal = {
+          Federated = aws_iam_openid_connect_provider.eks.arn
+        }
+
+        Action = "sts:AssumeRoleWithWebIdentity"
+
+        Condition = {
+          StringEquals = {
+            "${replace(aws_iam_openid_connect_provider.eks.url, "https://", "")}:aud" = "sts.amazonaws.com"
+
+            "${replace(aws_iam_openid_connect_provider.eks.url, "https://", "")}:sub" = "system:serviceaccount:kube-system:aws-load-balancer-controller"
+          }
+        }
+      }
+    ]
+  })
+
+  tags = {
+    Name        = "project4-aws-load-balancer-controller"
+    Project     = "Project4"
+    Environment = "dev"
+    ManagedBy   = "Terraform"
+  }
+}
+
+
+resource "aws_iam_role_policy_attachment" "aws_load_balancer_controller" {
+  role       = aws_iam_role.aws_load_balancer_controller.name
+  policy_arn = aws_iam_policy.aws_load_balancer_controller.arn
+}
 resource "aws_eks_node_group" "project4" {
   cluster_name    = aws_eks_cluster.project4.name
   node_group_name = "project4-node-group"
