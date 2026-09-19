@@ -48,10 +48,11 @@ resource "aws_subnet" "public" {
   map_public_ip_on_launch = true
 
   tags = {
-    Name        = "project4-public-${var.availability_zones[count.index]}"
-    Project     = "Project4"
-    Environment = "dev"
-    ManagedBy   = "Terraform"
+    Name                     = "project4-public-${var.availability_zones[count.index]}"
+    Project                  = "Project4"
+    Environment              = "dev"
+    ManagedBy                = "Terraform"
+    "kubernetes.io/role/elb" = "1"
   }
 }
 
